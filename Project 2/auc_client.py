@@ -30,6 +30,7 @@ def get_command_line_arguments():
     parser = argparse.ArgumentParser('Auctioneer')
     parser.add_argument('clientIP', type=str, help='Host IP Number')
     parser.add_argument('hostPort', type=int, help='Host PORT Number')
+    parser.add_argument('rdtPort', type=int, help='rdt PORT Number')
     args = parser.parse_args()
     return args
 
