@@ -9,6 +9,7 @@ Date - 13 October 2022
 # Import required libraries
 import socket
 import argparse
+import time
 
 # Define global variables
 SIZE = 1024
@@ -18,6 +19,7 @@ SELLER_ROLE = "Your role is: [Seller] \nPlease submit auction request:"
 BUYER_ROLE = "Your role is: [Buyer]"
 INVALID_REQUEST = "Invalid Request Information"
 BID_ONGOING = "Bidding on-going!"
+
 
 # Create client socket and connect to server Port Number
 
@@ -37,6 +39,24 @@ def get_command_line_arguments():
     parser.add_argument('rdtPort', type=int, help='rdt PORT Number')
     args = parser.parse_args()
     return args
+
+def extract_type(msg):
+    return int(msg.split(';{{}};')[1])
+
+
+def extract_seq(msg):
+    return int(msg.split(';{{}};')[2])
+
+
+def extract_data(msg):
+    return msg.split(';{{}};')[0]
+
+
+def rectify(a):
+    if a == 1:
+        return 0
+    else:
+        return 1
 
 
 def main():
@@ -101,9 +121,84 @@ def main():
             # Buyer waiting for auction results.
             txt = client.recv(SIZE).decode(FORMAT)
             print(txt)
+            ##################################################################
+            txt = txt.split()
+            if txt[3] == "won":
+                clientPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                clientPart2.bind(("127.0.0.1", args.rdtPort))
+                print("Do file transfer")
+                file_name = "testing.docx"
+                print('file name is ', file_name)
+                seq = 0
+                flag = 0
+                data = []
+                while True:
+                    if (flag == 0):
+                        flag = 1
+                        msg, connPart2 = clientPart2.recvfrom(10000)
+                        msg = msg.decode('utf-8')                                   
+                        file_size = int(msg.split(';{{}};')[0].split()[1])
+                        msg_type = extract_type(msg)
+                        recv_seq = extract_seq(msg)
+                        if (recv_seq == seq):
+                            print('Sequence Received', recv_seq)
+                            seq = 1 if seq == 0 else 0
+                            ack = str(seq)
+                            print('ACk sent: ', rectify(int(ack)))
+                            clientPart2.sendto(ack.encode('utf-8'), connPart2)
+                            print(extract_data(msg))
+                        else:
+                            print('wrong packet recvd')
+                    else:
+                        msg, connPart2 = clientPart2.recvfrom(10000)
+                        msg = msg.decode('utf-8')
+                        msg_type = extract_type(msg)
+                        recv_seq = extract_seq(msg)
+                        if (recv_seq == seq):
+                            if(extract_data(msg)=='fin'):
+                                print('All Data Received! Exiting...')
+                                seq = 1 if seq == 0 else 0
+                                ack = str(seq)
+                                print('ACk sent: ', rectify(int(ack)))
+                                print()
+                                clientPart2.sendto(ack.encode('utf-8'), connPart2)
+                                print('encountered fin')
+                                break
+                            else:
+                                    
+                                data.append(extract_data(msg))
+                                print('Msg received', recv_seq)
+                                print('Received data seq', recv_seq)
+                                # print(data)
+                                seq = 1 if seq == 0 else 0
+                                ack = str(seq)
+                                print('ACk sent: ', rectify(int(ack)))
+                                print()
+                                clientPart2.sendto(ack.encode('utf-8'), connPart2)
+                        else:
+                            print(extract_data(msg))
+                            clientPart2.sendto(recv_seq.encode('utf-8'), connPart2)
+                            print('duplicate recvd')
+                print('type of message is ', msg_type, ' sequence number - ', seq)
+                print('file size recvd: ', file_size)
+                print(type(data[0]))
+
+
+                with open("temp.txt", "wb") as file:
+                    for d in data:
+                        file.write(d[2:-1].encode(FORMAT))
+                
+                
+                
+                # while True:
+                #     msg, conn = clientPart2.recvfrom(10000)
+                #     print(msg)
+
+            ###################################################################
             # Once the result is published connection is closed.
-            connected = False
-            client.close()
+            else:
+                connected = False
+                client.close()
 
         # Handles if another Buyer tries to connect in middle of the on-going bidding.
         if serverWelcomeMessage == BID_ONGOING:
