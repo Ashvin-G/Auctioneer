@@ -96,7 +96,7 @@ def main():
                         except:
                             continue
                     break
-            client.send(str(bidAmount).encode(FORMAT))  # Send bid to Server
+            client.send((str(bidAmount)+";"+str(args.rdtPort)).encode(FORMAT))  # Send bid to Server
             print('Bid received. Please wait...')
             # Buyer waiting for auction results.
             txt = client.recv(SIZE).decode(FORMAT)
