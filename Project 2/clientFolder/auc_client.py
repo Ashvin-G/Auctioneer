@@ -10,6 +10,7 @@ Date - 13 October 2022
 import socket
 import argparse
 import time
+import os
 import numpy as np
 
 rate = 0.8
@@ -63,6 +64,10 @@ def rectify(a):
         return 1
 
 
+def create_packet(msg, msg_type, seq):
+    return str(msg)+';{{}};'+str(msg_type)+';{{}};'+str(seq)
+
+
 def main():
     args = get_command_line_arguments()
     client = createClientSocket(args)
@@ -89,9 +94,93 @@ def main():
                 # Waiting for Server Auction Start Prompt.
                 reply2 = client.recv(SIZE).decode(FORMAT)
                 print(reply2)
-                # Waiting for Auction results.
-                reply3 = client.recv(SIZE).decode(FORMAT)
-                print(reply3)
+                ########################################################
+                winnderADDRandRDT = client.recv(SIZE).decode(FORMAT)
+                IP, WINNER_RDT = winnderADDRandRDT.split(";")
+                IP = IP.split(",")[0]
+                IP = str(IP[2:-1])
+                WINNER_RDT = int(WINNER_RDT)
+                addrPart2 = (IP, WINNER_RDT)
+                serverPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                print("UDP socket opened for RDT")
+                file_name = "test.txt"
+                global file_size
+                file_size = str(os.path.getsize(file_name))
+                lst = []
+                size = []
+                with open(file_name, "rb") as file:
+                    size = 0
+                    while size <= int(file_size):
+                        data = file.read(2)
+                        if (not data):
+                            break
+                        lst.append(data)
+                size = [0]*len(lst)
+                size[0] = len(lst[0])
+                for i in range(1, len(lst)):
+                    size[i] = size[i-1]+len(lst[i])
+                print(size)
+                flag2 = 0
+                i = -1
+                seq = 0
+                imp = None
+                print('Start sending file.')
+                while True:
+                    if (i == -1):
+                        flag2 = 1
+                        X = file_size
+                        msg = f'start {X}'
+                        print('Sending control seq', seq, ':', msg)
+                        msg = create_packet(msg, 0, seq)
+                        serverPart2.sendto(msg.encode('utf-8'), addrPart2)
+                        time.sleep(0.02)
+                    elif i == len(lst):
+                        msg = 'fin'
+                        msg = create_packet(msg, 0, seq)
+                        print('Sending control seq', seq)
+                        serverPart2.sendto(msg.encode('utf-8'), addrPart2)
+                        imp = True
+                    elif i < int(file_size):
+                        # print('i value:', i)
+                        data = lst[i]
+                        # print('sending - ', data)
+                        print('Sending data seq', seq,
+                              ':', size[i], '/', file_size)
+                        msg = create_packet(data, 1, seq)
+                        serverPart2.sendto(msg.encode('utf-8'), addrPart2)
+                    seq = 1 if seq == 0 else 0
+                    serverPart2.settimeout(2)
+                    try:
+                        ack = int(serverPart2.recv(2000).decode('utf-8'))
+                        if ((np.random.binomial(n=1, p=rate)) == 1):
+                            if (ack == seq):
+                                print('Ack received : ', rectify(ack))
+                                i += 1
+                                print()
+                            else:
+                                seq = 1 if seq == 0 else 0
+                                print(
+                                    'Out of order ack; resending the packet with sequence:', seq)
+                        elif (imp != True):
+                            seq = 1 if seq == 0 else 0
+                            print('Ack dropped: ', rectify(ack))
+                            print()
+                            continue
+                        else:
+                            print('Ack received : ', rectify(ack))
+                            i += 1
+                            print()
+
+                    except:
+                        seq = 1 if seq == 0 else 0
+                        print('Timeout; resending the packet with sequence:', seq)
+                        continue
+
+                    if i == len(lst)+1:
+                        print()
+                        break
+
+                ########################################################
                 connected = False
                 client.close()
         if serverWelcomeMessage == BUYER_ROLE:  # Client connect as buyer
@@ -129,12 +218,12 @@ def main():
             ##################################################################
             txt = txt.split()
             if txt[3] == "won":
+                transferStartTime = time.time()
                 clientPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 clientPart2.bind(("127.0.0.1", args.rdtPort))
                 print("UDP Socket opened for RDT")
                 print('Start receiving file')
-                file_name = "testing.docx"
-                # print('file name is ', file_name)
+                file_name = "test.txt"
                 seq = 0
                 flag = 0
                 data = []
@@ -142,25 +231,21 @@ def main():
                     if (flag == 0):
                         flag = 1
                         msg, connPart2 = clientPart2.recvfrom(10000)
-                        if ((np.random.binomial(n=1, p=rate)) == 1):
-                            msg = msg.decode('utf-8')
-                            file_size = int(msg.split(';{{}};')[0].split()[1])
-                            msg_type = extract_type(msg)
-                            recv_seq = extract_seq(msg)
-                            if (recv_seq == seq):
-                                print('Sequence Received:', recv_seq)
-                                seq = 1 if seq == 0 else 0
-                                ack = str(seq)
-                                print('ACk sent:', rectify(int(ack)))
-                                clientPart2.sendto(
-                                    ack.encode('utf-8'), connPart2)
-                                print(extract_data(msg))
-                            else:
-                                print('Msg received with mismatched sequence number',
-                                      recv_seq, '. Expecting ', rectify(recv_seq))
+                        msg = msg.decode('utf-8')
+                        file_sizer = int(msg.split(';{{}};')[0].split()[1])
+                        msg_type = extract_type(msg)
+                        recv_seq = extract_seq(msg)
+                        if (recv_seq == seq):
+                            print('Sequence Received:', recv_seq)
+                            seq = 1 if seq == 0 else 0
+                            ack = str(seq)
+                            print('ACk sent:', rectify(int(ack)))
+                            clientPart2.sendto(
+                                ack.encode('utf-8'), connPart2)
+                            print(extract_data(msg))
                         else:
-                            print('PACKET DROPPED:', seq)
-                            print()
+                            print('Msg received with mismatched sequence number',
+                                  recv_seq, '. Expecting ', rectify(recv_seq))
                     else:
                         msg, connPart2 = clientPart2.recvfrom(10000)
                         if ((np.random.binomial(n=1, p=rate)) == 1):
@@ -176,14 +261,13 @@ def main():
                                     print()
                                     clientPart2.sendto(
                                         ack.encode('utf-8'), connPart2)
-                                    # print('encountered fin')
+                                    print('encountered fin')
                                     print('All Data Received! Exiting...')
+                                    # clientPart2.close()
                                     break
                                 else:
                                     data.append(extract_data(msg))
                                     print('Msg received:', recv_seq)
-                                    # print('Received data seq', recv_seq)
-                                    # print(data)
                                     seq = 1 if seq == 0 else 0
                                     ack = str(seq)
                                     print('ACk sent: ', rectify(int(ack)))
@@ -193,24 +277,26 @@ def main():
                             else:
                                 print(extract_data(msg))
                                 clientPart2.sendto(
-                                    recv_seq.encode('utf-8'), connPart2)
+                                    str(seq).encode('utf-8'), connPart2)
                                 print('Out of order packet')
+                                print()
                         else:
                             print('PACKET DROPPED:', seq)
                             print()
                 print(data)
-                # print('type of message is ', msg_type, ' sequence number - ', seq)
-                # print('file size recvd: ', file_size)
-                # print(type(data[0]))
+                transferEndTime = time.time()
+                transmissionCompleteTime = transferEndTime - transferStartTime
+                averageThroughput = file_sizer / transmissionCompleteTime
+                print(
+                    f"Transmission finished: {file_sizer} bytes / {transmissionCompleteTime} = {averageThroughput} bps")
 
                 # with open("temp.txt", "wb") as file:
                 #     for d in data:
                 #         file.write(d[2:-1].encode(FORMAT))
 
-                # while True:
-                #     msg, conn = clientPart2.recvfrom(10000)
-                #     print(msg)
-
+                clientPart2.close()
+                connected = False
+                break
             ###################################################################
             # Once the result is published connection is closed.
             else:
