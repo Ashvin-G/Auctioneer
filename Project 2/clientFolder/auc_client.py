@@ -202,9 +202,9 @@ def main():
             ##################################################################
             txt = txt.split()
             if txt[3] == "won":
+                transferStartTime = time.time()
                 clientPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 clientPart2.bind(("127.0.0.1", args.rdtPort))
-                print("Do file transfer")
                 file_name = "test.txt"
                 print('file name is ', file_name)
                 seq = 0
@@ -259,7 +259,12 @@ def main():
                             print('duplicate recvd')
                 print('type of message is ', msg_type, ' sequence number - ', seq)
                 print('file size recvd: ', file_size)
-                print(data)
+                transferEndTime = time.time()
+                transmissionCompleteTime = transferEndTime - transferStartTime
+                averageThroughput = file_size / transmissionCompleteTime
+                print("[DEBUG LINE] ", data)
+                print(f"Transmission finished: {file_size} bytes / {transmissionCompleteTime} = {averageThroughput} bps")
+
 
 
                 with open("temp.txt", "wb") as file:
@@ -269,11 +274,6 @@ def main():
                 clientPart2.close()
                 connected = False
                 break
-                
-                # while True:
-                #     msg, conn = clientPart2.recvfrom(10000)
-                #     print(msg)
-
             ###################################################################
             # Once the result is published connection is closed.
             else:
