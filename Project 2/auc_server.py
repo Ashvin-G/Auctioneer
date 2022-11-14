@@ -64,26 +64,32 @@ def broadcastResultForType2(maxBid, secondHighestBid):
             flag = 1
             result = f'Auction finished! \nYou won this item {ITEM_NAME}! Your payment due is ${secondHighestBid} \nDisconnecting from the Auctioneer server. Auction is over\nSeller IP: {SELLER_ADDR}'
             # BID_AND_CON dictionary is used to find the corresponding conn variable to send the message to the winner.
-            WINNER_CONN = list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]
+            WINNER_CONN = list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]
             WINNER_ADDR = CONS[WINNER_CONN]  # IP of the winning buyer
             WINNER_CONN.send(result.encode("utf-8"))
-            print("Do File Transfer Logic")
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            # print("Do File Transfer Logic")
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
         else:
             result = f'Auction finished! \nUnfortunately you did not win in the last round. \nDisconnecting from the Auctioneer server. Auction is over'
             # BID_AND_CON dictionary is used to find the corresponding conn variable to send the message to the winner.
-            sendMessageToBuyerAndCloseConnection(result, list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)])
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            sendMessageToBuyerAndCloseConnection(result, list(BID_AND_CON.keys())[
+                                                 list(BID_AND_CON.values()).index(bid)])
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
 
 
 def create_packet(msg, msg_type, seq):
     return str(msg)+';{{}};'+str(msg_type)+';{{}};'+str(seq)
+
 
 def rectify(a):
     if a == 1:
         return 0
     else:
         return 1
+
 
 def broadcastResultForType1(maxBid, CONS):
     global WINNER_ADDR
@@ -95,15 +101,18 @@ def broadcastResultForType1(maxBid, CONS):
             flag = 1
             result = f'Auction finished! \nYou won this item {ITEM_NAME}! Your payment due is ${maxBid} \nDisconnecting from the Auctioneer server. Auction is over\nSeller IP: {SELLER_ADDR}'
             # BID_AND_CON dictionary is used to find the corresponding conn variable to send the message to the winner.
-            WINNER_CONN = list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]
+            WINNER_CONN = list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]
             WINNER_ADDR = CONS[WINNER_CONN]
             WINNER_CONN.send(result.encode("utf-8"))
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
         else:  # rest of the buyers receive this message
             result = f'Auction finished! \nUnfortunately you did not win in the last round. \nDisconnecting from the Auctioneer server. Auction is over'
             sendMessageToBuyerAndCloseConnection(result, list(BID_AND_CON.keys())[
                                                  list(BID_AND_CON.values()).index(bid)])
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
 
 
 # Reset function to flush all the variables to their initial state and to prepare for another round of bidding once the ongoing round is over.
@@ -272,7 +281,8 @@ def handleBidding(conn, addr, CONS):
         maxBid = computeWinnerforAuctionType1(BIDS)
         secondHighestBid = computeWinnerforAuctionType2(BIDS)
         # since it is a vickrey auction highest bidder wins but has to pay the second highest bid
-        print(f"Item sold! The highest bid is ${maxBid}. The actual payment is ${secondHighestBid}")
+        print(
+            f"Item sold! The highest bid is ${maxBid}. The actual payment is ${secondHighestBid}")
         broadcastResultForType2(maxBid, secondHighestBid)
         feedbackMessage = f"Success! Your item {ITEM_NAME} has been sold for ${secondHighestBid}. Buyer IP:{WINNER_ADDR}"
         sendMessageToSellerAndCloseConnection(feedbackMessage)
