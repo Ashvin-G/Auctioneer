@@ -10,6 +10,7 @@ Date - 13 October 2022
 import socket
 import argparse
 import time
+import os
 
 # Define global variables
 SIZE = 1024
@@ -58,6 +59,10 @@ def rectify(a):
     else:
         return 1
 
+def create_packet(msg, msg_type, seq):
+    print(type(msg))
+    return str(msg)+';{{}};'+str(msg_type)+';{{}};'+str(seq)
+
 
 def main():
     args = get_command_line_arguments()
@@ -85,9 +90,82 @@ def main():
                 # Waiting for Server Auction Start Prompt.
                 reply2 = client.recv(SIZE).decode(FORMAT)
                 print(reply2)
-                # Waiting for Auction results.
-                reply3 = client.recv(SIZE).decode(FORMAT)
-                print(reply3)
+                ########################################################
+                winnderADDRandRDT = client.recv(SIZE).decode(FORMAT)
+                print("winnerRDT", winnderADDRandRDT)
+                print("--------------------")
+                IP, WINNER_RDT = winnderADDRandRDT.split(";")
+                IP = IP.split(",")[0]
+                IP = str(IP[2:-1])
+                WINNER_RDT = int(WINNER_RDT)
+                print("IP, RDT", IP, WINNER_RDT)
+                addrPart2 = (IP, WINNER_RDT)
+                serverPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                file_name = "test.txt"
+                file_size = str(os.path.getsize(file_name))
+                print("File Size: ", file_size)
+                lst = []
+                size = []
+                with open(file_name, "rb") as file:
+                    size = 0
+                    while size <= int(file_size):
+                        data = file.read(2000)
+                        if (not data):
+                            break
+                        lst.append(data)
+                print(lst)
+                size = [0]*len(lst)
+                size[0] = len(lst[0])
+                for i in range(1, len(lst)):
+                    size[i] = size[i-1]+len(lst[i])
+                print(size)
+                flag = 0
+                i = -1
+                seq = 0
+                print('Start sending file.')
+                while True:
+                    if (flag == 0):
+                        print('entered if flag=0')
+                        flag = 1
+                        X = file_size
+                        msg = f'start {X}'
+                        print('Sending control seq', seq, ':', msg)
+                        msg = create_packet(msg, 0, seq)
+                        serverPart2.sendto(msg.encode('utf-8'), addrPart2)
+                        print("Packet Sent")
+                        sendTime = time.time()
+                        time.sleep(0.02)
+                    elif i == len(lst):
+                        msg='fin'
+                        msg = create_packet(msg, 0, seq)
+                        print('Sending control seq',seq)
+                        serverPart2.sendto(msg.encode('utf-8'), addrPart2)
+                        sendTime = time.time()
+                    elif i < int(file_size):
+                        # print('i value:', i)
+                        data = lst[i]
+                        # print('sending - ', data)
+                        print('Sending data seq', seq, ':', size[i], '/', file_size)
+                        msg = create_packet(data, 1, seq)
+                        serverPart2.sendto(msg.encode('utf-8'), addrPart2)
+                        sendTime = time.time()
+                    seq = 1 if seq == 0 else 0
+                    ack = int(serverPart2.recv(2000).decode('utf-8'))
+                    recvTime = time.time()
+                    if (ack == seq and (recvTime - sendTime) <= 2):
+                        print('Ack received : '+str(rectify(ack))+' Time taken: '+str(recvTime - sendTime))
+                        i += 1
+                        print()
+                    else:
+                        print('timeout; resending the packet')
+                        seq = 1 if seq == 0 else 0
+
+                    if i == len(lst)+1:
+                        print()
+                        break
+
+
+                ########################################################
                 connected = False
                 client.close()
         if serverWelcomeMessage == BUYER_ROLE:  # Client connect as buyer
@@ -127,7 +205,7 @@ def main():
                 clientPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 clientPart2.bind(("127.0.0.1", args.rdtPort))
                 print("Do file transfer")
-                file_name = "testing.docx"
+                file_name = "test.txt"
                 print('file name is ', file_name)
                 seq = 0
                 flag = 0
@@ -181,14 +259,16 @@ def main():
                             print('duplicate recvd')
                 print('type of message is ', msg_type, ' sequence number - ', seq)
                 print('file size recvd: ', file_size)
-                print(type(data[0]))
+                print(data)
 
 
                 with open("temp.txt", "wb") as file:
                     for d in data:
                         file.write(d[2:-1].encode(FORMAT))
                 
-                
+                clientPart2.close()
+                connected = False
+                break
                 
                 # while True:
                 #     msg, conn = clientPart2.recvfrom(10000)
