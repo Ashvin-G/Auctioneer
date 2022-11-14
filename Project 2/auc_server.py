@@ -68,7 +68,7 @@ def broadcastResultForType2(maxBid, secondHighestBid):
                 list(BID_AND_CON.values()).index(bid)]
             WINNER_ADDR = CONS[WINNER_CONN]  # IP of the winning buyer
             WINNER_CONN.send(result.encode("utf-8"))
-            print("Do File Transfer Logic")
+            # print("Do File Transfer Logic")
             del BID_AND_CON[list(BID_AND_CON.keys())[
                 list(BID_AND_CON.values()).index(bid)]]
         else:
@@ -81,7 +81,6 @@ def broadcastResultForType2(maxBid, secondHighestBid):
 
 
 def create_packet(msg, msg_type, seq):
-    print(type(msg))
     return str(msg)+';{{}};'+str(msg_type)+';{{}};'+str(seq)
 
 
@@ -106,88 +105,6 @@ def broadcastResultForType1(maxBid, CONS):
                 list(BID_AND_CON.values()).index(bid)]
             WINNER_ADDR = CONS[WINNER_CONN]
             WINNER_CONN.send(result.encode("utf-8"))
-            ###################################################################################
-            for rdtPortNumber in CONN_RDT[WINNER_CONN]:
-                WINNER_RDT = int(rdtPortNumber)
-            addrPart2 = ("127.0.0.1", WINNER_RDT)  # Replace hardcoded IP
-            serverPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            file_name = "test.txt"
-            file_size = str(os.path.getsize(file_name))
-            print()
-            print("File Size: ", file_size)
-            lst = []
-            size = []
-            with open(file_name, "rb") as file:
-                size = 0
-                while size <= int(file_size):
-                    data = file.read(2)
-                    if (not data):
-                        break
-                    lst.append(data)
-            size = [0]*len(lst)
-            size[0] = len(lst[0])
-            for i in range(1, len(lst)):
-                size[i] = size[i-1]+len(lst[i])
-            # print(size)
-            flag2 = 0
-            i = -1
-            seq = 0
-            print('Start sending file.')
-            while True:
-                if (flag2 == 0):
-                    # print('entered if flag=0')
-                    flag2 = 1
-                    X = file_size
-                    msg = f'start {X}'
-                    print('Sending control seq', seq, ':', msg)
-                    msg = create_packet(msg, 0, seq)
-                    serverPart2.sendto(msg.encode('utf-8'), addrPart2)
-                    # print("Packet Sent")
-                    # sendTime = time.time()
-                    time.sleep(0.02)
-                elif i == len(lst):
-                    msg = 'fin'
-                    msg = create_packet(msg, 0, seq)
-                    print('Sending control seq', seq)
-                    serverPart2.sendto(msg.encode('utf-8'), addrPart2)
-                    # sendTime = time.time()
-                elif i < int(file_size):
-                    # print('i value:', i)
-                    data = lst[i]
-                    # print('sending - ', data)
-                    print('Sending data seq', seq,
-                          ':', size[i], '/', file_size)
-                    msg = create_packet(data, 1, seq)
-                    serverPart2.sendto(msg.encode('utf-8'), addrPart2)
-                    # sendTime = time.time()
-                seq = 1 if seq == 0 else 0
-                serverPart2.settimeout(2)
-                try:
-                    ack = int(serverPart2.recv(2000).decode('utf-8'))
-                    if (ack == seq):
-                        print('Ack received : ', rectify(ack))
-                        i += 1
-                        print()
-                    else:
-                        seq = 1 if seq == 0 else 0
-                        print(
-                            'Out of order ack; resending the packet with sequence:', seq)
-                except:
-                    seq = 1 if seq == 0 else 0
-                    print('Timeout; resending the packet with sequence:', seq)
-                    continue
-
-                if i == len(lst)+1:
-                    print()
-                    break
-
-            # testPayload = ["test1", "test2", "test3", "test4"]
-            # serverPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            # for payload in testPayload:
-            #     print("Payload: ", payload)
-            #     serverPart2.sendto(payload.encode("utf-8"), addrPart2)
-            #     print("Sent")
-            #################################################################################
             del BID_AND_CON[list(BID_AND_CON.keys())[
                 list(BID_AND_CON.values()).index(bid)]]
         else:  # rest of the buyers receive this message
@@ -353,8 +270,12 @@ def handleBidding(conn, addr, CONS):
         # Lets all buyers know whether they won/lost
         broadcastResultForType1(maxBid, CONS)
         # updates seller and closes the respective socket
-        feedbackMessage = f"Success! Your item {ITEM_NAME} has been sold for ${maxBid}. Buyer IP:{WINNER_ADDR} on RDT Port: {CONN_RDT[WINNER_CONN]}"
-        sendMessageToSellerAndCloseConnection(feedbackMessage)
+        feedbackMessage = f"Success! Your item {ITEM_NAME} has been sold for ${maxBid}. Buyer IP:{WINNER_ADDR}"
+        SELLER_CONN.send(feedbackMessage.encode(FORMAT))
+        for rdt in CONN_RDT[WINNER_CONN]:
+            WINNER_RDT = int(rdt)
+        ipAndRDT = f"{WINNER_ADDR};{WINNER_RDT}"
+        SELLER_CONN.send(ipAndRDT.encode(FORMAT))
 
     elif AUCTION_TYPE == 2:  # if it is a vickrey auction
         maxBid = computeWinnerforAuctionType1(BIDS)
