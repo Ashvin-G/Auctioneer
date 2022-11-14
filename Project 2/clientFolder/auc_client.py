@@ -215,7 +215,7 @@ def main():
                         msg, connPart2 = clientPart2.recvfrom(10000)
                         if ((np.random.binomial(n=1, p=rate)) == 1):
                             msg = msg.decode('utf-8')
-                            file_size = int(msg.split(';{{}};')[0].split()[1])
+                            file_sizer = int(msg.split(';{{}};')[0].split()[1])
                             msg_type = extract_type(msg)
                             recv_seq = extract_seq(msg)
                             if (recv_seq == seq):
@@ -270,8 +270,8 @@ def main():
 
                 transferEndTime = time.time()
                 transmissionCompleteTime = transferEndTime - transferStartTime
-                averageThroughput = file_size / transmissionCompleteTime
-                print(f"Transmission finished: {file_size} bytes / {transmissionCompleteTime} = {averageThroughput} bps")
+                averageThroughput = file_sizer / transmissionCompleteTime
+                print(f"Transmission finished: {file_sizer} bytes / {transmissionCompleteTime} = {averageThroughput} bps")
 
 
 
