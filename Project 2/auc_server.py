@@ -64,27 +64,33 @@ def broadcastResultForType2(maxBid, secondHighestBid):
             flag = 1
             result = f'Auction finished! \nYou won this item {ITEM_NAME}! Your payment due is ${secondHighestBid} \nDisconnecting from the Auctioneer server. Auction is over\nSeller IP: {SELLER_ADDR}'
             # BID_AND_CON dictionary is used to find the corresponding conn variable to send the message to the winner.
-            WINNER_CONN = list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]
+            WINNER_CONN = list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]
             WINNER_ADDR = CONS[WINNER_CONN]  # IP of the winning buyer
             WINNER_CONN.send(result.encode("utf-8"))
             print("Do File Transfer Logic")
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
         else:
             result = f'Auction finished! \nUnfortunately you did not win in the last round. \nDisconnecting from the Auctioneer server. Auction is over'
             # BID_AND_CON dictionary is used to find the corresponding conn variable to send the message to the winner.
-            sendMessageToBuyerAndCloseConnection(result, list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)])
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            sendMessageToBuyerAndCloseConnection(result, list(BID_AND_CON.keys())[
+                                                 list(BID_AND_CON.values()).index(bid)])
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
 
 
 def create_packet(msg, msg_type, seq):
     print(type(msg))
     return str(msg)+';{{}};'+str(msg_type)+';{{}};'+str(seq)
 
+
 def rectify(a):
     if a == 1:
         return 0
     else:
         return 1
+
 
 def broadcastResultForType1(maxBid, CONS):
     global WINNER_ADDR
@@ -96,23 +102,25 @@ def broadcastResultForType1(maxBid, CONS):
             flag = 1
             result = f'Auction finished! \nYou won this item {ITEM_NAME}! Your payment due is ${maxBid} \nDisconnecting from the Auctioneer server. Auction is over\nSeller IP: {SELLER_ADDR}'
             # BID_AND_CON dictionary is used to find the corresponding conn variable to send the message to the winner.
-            WINNER_CONN = list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]
+            WINNER_CONN = list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]
             WINNER_ADDR = CONS[WINNER_CONN]
             WINNER_CONN.send(result.encode("utf-8"))
             ###################################################################################
             for rdtPortNumber in CONN_RDT[WINNER_CONN]:
                 WINNER_RDT = int(rdtPortNumber)
-            addrPart2 = ("127.0.0.1", WINNER_RDT) # Replace hardcoded IP
+            addrPart2 = ("127.0.0.1", WINNER_RDT)  # Replace hardcoded IP
             serverPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             file_name = "test.txt"
             file_size = str(os.path.getsize(file_name))
+            print()
             print("File Size: ", file_size)
             lst = []
             size = []
             with open(file_name, "rb") as file:
                 size = 0
                 while size <= int(file_size):
-                    data = file.read(2000)
+                    data = file.read(2)
                     if (not data):
                         break
                     lst.append(data)
@@ -120,56 +128,59 @@ def broadcastResultForType1(maxBid, CONS):
             size[0] = len(lst[0])
             for i in range(1, len(lst)):
                 size[i] = size[i-1]+len(lst[i])
-            print(size)
-            flag = 0
+            # print(size)
+            flag2 = 0
             i = -1
             seq = 0
             print('Start sending file.')
             while True:
-                if (flag == 0):
-                    print('entered if flag=0')
-                    flag = 1
+                if (flag2 == 0):
+                    # print('entered if flag=0')
+                    flag2 = 1
                     X = file_size
                     msg = f'start {X}'
                     print('Sending control seq', seq, ':', msg)
                     msg = create_packet(msg, 0, seq)
                     serverPart2.sendto(msg.encode('utf-8'), addrPart2)
-                    print("Packet Sent")
-                    sendTime = time.time()
+                    # print("Packet Sent")
+                    # sendTime = time.time()
                     time.sleep(0.02)
                 elif i == len(lst):
-                    msg='fin'
+                    msg = 'fin'
                     msg = create_packet(msg, 0, seq)
-                    print('Sending control seq',seq)
+                    print('Sending control seq', seq)
                     serverPart2.sendto(msg.encode('utf-8'), addrPart2)
-                    sendTime = time.time()
+                    # sendTime = time.time()
                 elif i < int(file_size):
                     # print('i value:', i)
                     data = lst[i]
                     # print('sending - ', data)
-                    print('Sending data seq', seq, ':', size[i], '/', file_size)
+                    print('Sending data seq', seq,
+                          ':', size[i], '/', file_size)
                     msg = create_packet(data, 1, seq)
                     serverPart2.sendto(msg.encode('utf-8'), addrPart2)
-                    sendTime = time.time()
+                    # sendTime = time.time()
                 seq = 1 if seq == 0 else 0
-                ack = int(serverPart2.recv(2000).decode('utf-8'))
-                recvTime = time.time()
-                if (ack == seq and (recvTime - sendTime) <= 2):
-                    print('Ack received : '+str(rectify(ack))+' Time taken: '+str(recvTime - sendTime))
-                    i += 1
-                    print()
-                else:
-                    print('timeout; resending the packet')
+                serverPart2.settimeout(2)
+                try:
+                    ack = int(serverPart2.recv(2000).decode('utf-8'))
+                    if (ack == seq):
+                        print('Ack received : ', rectify(ack))
+                        i += 1
+                        print()
+                    else:
+                        seq = 1 if seq == 0 else 0
+                        print(
+                            'Out of order ack; resending the packet with sequence:', seq)
+                except:
                     seq = 1 if seq == 0 else 0
+                    print('Timeout; resending the packet with sequence:', seq)
+                    continue
 
                 if i == len(lst)+1:
                     print()
                     break
 
-
-            
-            
-            
             # testPayload = ["test1", "test2", "test3", "test4"]
             # serverPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # for payload in testPayload:
@@ -177,12 +188,14 @@ def broadcastResultForType1(maxBid, CONS):
             #     serverPart2.sendto(payload.encode("utf-8"), addrPart2)
             #     print("Sent")
             #################################################################################
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
         else:  # rest of the buyers receive this message
             result = f'Auction finished! \nUnfortunately you did not win in the last round. \nDisconnecting from the Auctioneer server. Auction is over'
             sendMessageToBuyerAndCloseConnection(result, list(BID_AND_CON.keys())[
                                                  list(BID_AND_CON.values()).index(bid)])
-            del BID_AND_CON[list(BID_AND_CON.keys())[list(BID_AND_CON.values()).index(bid)]]
+            del BID_AND_CON[list(BID_AND_CON.keys())[
+                list(BID_AND_CON.values()).index(bid)]]
 
 
 # Reset function to flush all the variables to their initial state and to prepare for another round of bidding once the ongoing round is over.
@@ -347,7 +360,8 @@ def handleBidding(conn, addr, CONS):
         maxBid = computeWinnerforAuctionType1(BIDS)
         secondHighestBid = computeWinnerforAuctionType2(BIDS)
         # since it is a vickrey auction highest bidder wins but has to pay the second highest bid
-        print(f"Item sold! The highest bid is ${maxBid}. The actual payment is ${secondHighestBid}")
+        print(
+            f"Item sold! The highest bid is ${maxBid}. The actual payment is ${secondHighestBid}")
         broadcastResultForType2(maxBid, secondHighestBid)
         feedbackMessage = f"Success! Your item {ITEM_NAME} has been sold for ${secondHighestBid}. Buyer IP:{WINNER_ADDR}"
         sendMessageToSellerAndCloseConnection(feedbackMessage)
