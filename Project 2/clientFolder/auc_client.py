@@ -103,7 +103,7 @@ def main():
                 addrPart2 = (IP, WINNER_RDT)
                 serverPart2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 print("UDP socket opened for RDT")
-                file_name = "test.txt"
+                file_name = "tosend.file"
                 global file_size
                 file_size = str(os.path.getsize(file_name))
                 lst = []
@@ -111,7 +111,7 @@ def main():
                 with open(file_name, "rb") as file:
                     size = 0
                     while size <= int(file_size):
-                        data = file.read(2)
+                        data = file.read(2000)
                         if (not data):
                             break
                         lst.append(data)
@@ -223,7 +223,7 @@ def main():
                 clientPart2.bind(("127.0.0.1", args.rdtPort))
                 print("UDP Socket opened for RDT")
                 print('Start receiving file')
-                file_name = "test.txt"
+                file_name = "recved.file"
                 seq = 0
                 flag = 0
                 data = []
@@ -266,7 +266,12 @@ def main():
                                     # clientPart2.close()
                                     break
                                 else:
-                                    data.append(extract_data(msg))
+                                    temp = extract_data(msg)
+                                    temp = temp[2:-1]
+                                    temp = temp.encode('utf-8')
+                                    c = temp.decode(
+                                        'unicode-escape').encode('ISO-8859-1')
+                                    data.append(c)
                                     print('Msg received:', recv_seq)
                                     seq = 1 if seq == 0 else 0
                                     ack = str(seq)
@@ -275,7 +280,7 @@ def main():
                                     clientPart2.sendto(
                                         ack.encode('utf-8'), connPart2)
                             else:
-                                print(extract_data(msg))
+                                # print(extract_data(msg))
                                 clientPart2.sendto(
                                     str(seq).encode('utf-8'), connPart2)
                                 print('Out of order packet')
@@ -290,9 +295,9 @@ def main():
                 print(
                     f"Transmission finished: {file_sizer} bytes / {transmissionCompleteTime} = {averageThroughput} bps")
 
-                # with open("temp.txt", "wb") as file:
-                #     for d in data:
-                #         file.write(d[2:-1].encode(FORMAT))
+                with open("recvd.file", "wb") as file:
+                    for d in data:
+                        file.write(d)
 
                 clientPart2.close()
                 connected = False
