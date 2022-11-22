@@ -1,7 +1,24 @@
-Number of Bytes |	TCT( time taken to receive all bytes)  |	AT(Average Throughput) | Packet-Loss Rate
------------------------------------------------------------------------------------------------------
- 11204 Bytes    |			17.15	sec			   |		6530.87 bps	     |	0.1
- 11204 Bytes    |			33.36	sec			   |		3357.33 bps	     |	0.2						   
- 11204 Bytes    |			73.18	sec			   |		1530.66 bps	     |	0.3
- 11204 Bytes    |			105.52 sec			   |		1061.55 bps	     |	0.4
- 11204 Bytes    |			198.89 sec		         |		563.24 bps	     |	0.5
+Number of Bytes:  11204 Bytes
+Packet-Loss Rate: 0.1
+TCT: 17.15 sec
+AT: 6530.87 bps
+
+Number of Bytes:  11204 Bytes
+Packet-Loss Rate: 0.2
+TCT: 33.36 sec
+AT: 3357.33 bps
+
+Number of Bytes:  11204 Bytes
+Packet-Loss Rate: 0.3
+TCT: 73.18 sec
+AT: 1530.66 bps
+
+Number of Bytes:  11204 Bytes
+Packet-Loss Rate: 0.4
+TCT: 105.52 sec
+AT: 1061.55 bps
+
+Number of Bytes:  11204 Bytes
+Packet-Loss Rate: 0.5
+TCT: 198.89 sec
+AT: 563.24 bps
